@@ -1,20 +1,64 @@
-const express = require('express')
-const dotenv = require('dotenv')
-const cors = require('cors')
-const routes = require('./routes')
-const bodyParser = require('body-parser')
+require("dotenv").config();
+const express = require("express");
+const compression = require("compression");
+const http = require("http");
+const cors = require("cors");
+const { Server } = require("socket.io");
+const mainRouter = require("./routes");
+const { adminSocket } = require("./sockets/sockets");
+
+const app = express();
+app.use(compression());
+app.use(
+  cors({
+    origin: `http://${process.env.HOST || "localhost"}:${
+      process.env.PORT_CLIENT || 8000
+    }`,
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
+
+app.use(mainRouter);
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: `http://${process.env.HOST || "localhost"}:${
+      process.env.PORT_CLIENT || 8000
+    }`,
+    methods: ["GET", "POST"],
+  },
+});
+
+// ADMIN SOCKET
 
 
-const server = express()
+io.on("connection", (socket) => {
+  console.log(`User connected ${socket.id}`);
 
-const corsOptions = {
-  origin: "*",
-};
+  socket.on("join_room", (data) => {
+    socket.join(data)
+    console.log(`User with id:${socket.id} joined room:${data}`)
+  })
 
-server.use(cors(corsOptions));
-server.use(bodyParser.json())
-server.use('/api', routes)
+  socket.on("send_message", (data) => {
+    socket.to(data.room).emit("receive_message", data)
+  })
 
-server.listen(8000, "0.0.0.0", () => {
-  console.log("Server listening")
-})
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
+  });
+});
+
+// app.use((req, res, next) => {
+//     return res.sendStatus(500);
+// })
+
+module.exports = server;

@@ -1,7 +1,14 @@
 const models = require("../models");
+
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
+
+
 const user = models.user;
+// const adminChat = models.adminChat;
+// const chatBot = models.chatBot;
+// const communication = models.communication;
+// const room = models.room;
+
 
 function generateAccessToken(user) {
   return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1800s'})
@@ -71,46 +78,69 @@ const deleteUser = async (req, res) => {
   }
 };
 
-const authenticate = async (req, res) => {
-  try {
-    const emailValue = req.body.email;
-    const searchedUser = await user.findOne({
-      where: { email: emailValue }
-    });
-    if (searchedUser) {
-      if (await searchedUser.validPassword(req.body.password)) {
-        // if (bcrypt.compareSync(req.body.password, searchedUser.password)) {
-        const token = jwt.sign({ id: searchedUser.id },
-          process.env.ACCESS_TOKEN_SECRET,
-          { expiresIn: "1h" });
-        const refreshToken = jwt.sign({ id: searchedUser.id },
-          process.env.REFRESH_TOKEN_SECRET,
-          { expiresIn: "1y" });
-        res.json({
-          status: "success",
-          message: "user found!!!",
-          data: { user: searchedUser, token: token, refreshToken: refreshToken }
-        });
-      } else {
-        res.json({
-          status: "error",
-          message: "Invalid email/password!!!",
-          data: null
-        });
+
+function login(username, password) {
+  const requestOptions = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  };
+
+  return fetch(`${config.apiUrl}/users/authenticate`, requestOptions)
+    .then(handleResponse)
+    .then(user => {
+      // login successful if there's a user in the response
+      if (user) {
+        // store user details and basic auth credentials in local storage
+        // to keep user logged in between page refreshes
+        user.authdata = window.btoa(username + ':' + password);
+        localStorage.setItem('user', JSON.stringify(user));
       }
-    } else {
-      throw new Error("User not found");
+
+      return user;
+    });
+}
+
+function handleResponse(response) {
+  return response.text().then(text => {
+    const data = text && JSON.parse(text);
+    if (!response.ok) {
+      if (response.status === 401) {
+        // auto logout if 401 response returned from api
+        logout();
+        location.reload(true);
+      }
+
+      const error = (data && data.message) || response.statusText;
+      return Promise.reject(error);
     }
-  } catch (error) {
-    return res.status(500).send(error.message);
-  }
-};
+
+    return data;
+  });
+}
+
+function logout() {
+  // remove user from local storage to log user out
+  localStorage.removeItem('user');
+}
+
+function getAll() {
+  const requestOptions = {
+    method: 'GET',
+    headers: authHeader()
+  };
+
+  return fetch(`${config.apiUrl}/users`, requestOptions).then(handleResponse);
+}
 
 module.exports = {
+  //User
   createUser,
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser,
-  authenticate
+  login,
+  logout,
+  getAll
 };

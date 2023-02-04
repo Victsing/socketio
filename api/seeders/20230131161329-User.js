@@ -12,6 +12,7 @@ module.exports = {
       lastName: 'Doe',
       email: 'test@test.fr',
       password:  hash,
+      username: "TheUserrrr",
       createdAt: new Date(),
       updatedAt: new Date()
     }], {});

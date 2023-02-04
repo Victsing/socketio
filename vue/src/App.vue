@@ -1,9 +1,17 @@
-<script setup>
-</script>
-
 <template>
-  <RouterView />
+  <div class="jumbotron">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-6 offset-sm-3">
+          <router-view></router-view>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
-<style scoped>
-</style>
+<script>
+export default {
+  name: 'app'
+};
+</script>
