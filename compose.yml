@@ -20,5 +20,14 @@ services:
     depends_on:
       - db
 
+  redis:
+    image: redis:alpine
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass mypassword
+    ports:
+      - "6379:6379"
+    volumes:
+      - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+
+
 volumes:
   database-data: {}
